@@ -1,0 +1,38 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Krt@Local2026!"   # senha apenas para ambiente local
+    ports:
+      - "1433:1433"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  localstack:
+    image: localstack/localstack:3.8
+    environment:
+      SERVICES: sns,sqs
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./localstack/init-aws.sh:/etc/localstack/init/ready.d/init-aws.sh
+
+  api:
+    build: .
+    depends_on: [sqlserver, redis, localstack]
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__SqlServer: "Server=sqlserver,1433;Database=KrtOnboarding;User Id=sa;Password=Krt@Local2026!;TrustServerCertificate=True"
+      ConnectionStrings__Redis: "redis:6379"
+      Database__ApplyMigrationsOnStartup: "true"
+      Messaging__TopicArn: "arn:aws:sns:us-east-1:000000000000:krt-account-events"
+      AWS__ServiceURL: "http://localstack:4566"
+      AWS__Region: "us-east-1"
+      AWS_ACCESS_KEY_ID: "test"
+      AWS_SECRET_ACCESS_KEY: "test"
